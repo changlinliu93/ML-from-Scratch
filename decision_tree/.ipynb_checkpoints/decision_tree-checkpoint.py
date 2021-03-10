@@ -31,22 +31,28 @@ class DecisionTree():
         self.criteria = criteria
         self.nb_feature = len(data[0]) - 1
         self.feature_types = []
+        # Infer the type of the features
         for i in range(self.nb_feature):
             if type(data[0][i]) is str:
                 self.feature_types.append('nominal')
             elif type(data[0][i]) is int or type(data[0][i]) is float:
                 self.feature_types.append('numerical')
+        # Select the best feature for branching
+        # cutpoint is the starting point of each segment, inclusive
         self.feature_index, cutpoints = self.select_feature(data, self.criteria)        
+        # Branch if doing so would improve the criteria
         if len(cutpoints) > 1:
             data = sorted(data, key = lambda x:x[self.feature_index])
             if self.verbose: print(f'branch node: {(self.parent.id if self.parent else None)} --> {self.id}')
             self.subtrees = []
+            # For numerical features, split into two branches, according to the best splitting point found 
             if self.feature_types[self.feature_index] == 'numerical':
                 self.feature_type = 'numerical'
                 self.threshold = data[cutpoints[1]][self.feature_index]
                 if self.verbose: print(f'using numerical feature {self.feature_index}, threshold: {self.threshold}\n')
                 self.subtrees.append(DecisionTree(self, verbose=self.verbose).train(data[cutpoints[0]:cutpoints[1]], criteria))
                 self.subtrees.append(DecisionTree(self, verbose=self.verbose).train(data[cutpoints[1]:], criteria))
+            # For nominal features, split natrually
             elif self.feature_types[self.feature_index] == 'nominal':
                 self.feature_type = 'nominal'
                 self.subtree_map = dict()
@@ -59,6 +65,7 @@ class DecisionTree():
                         subtree = DecisionTree(self, verbose=self.verbose).train(data[cutpoints[i]:cutpoints[i+1]], criteria)
                     self.subtrees.append(subtree)
                     self.subtree_map[data[cutpoints[i]][self.feature_index]] = subtree
+        # No improvement achievable, make this a leave node, use majority voting to decide the label
         else:
             labels = (x[-1] for x in data)
             cl = Counter(labels)
@@ -83,9 +90,11 @@ class DecisionTree():
     def select_feature(self, data, criteria):
         criteria_values = []
         cutpoints = []
+        # Test all features
         for i in range(self.nb_feature):
             if self.verbose: print(f'testing feature {i}')
             data = sorted(data, key=lambda x: x[i])
+            # For numerical features, iterate through the sorted data to find an optimal split
             if self.feature_types[i] == 'numerical':
                 current_max = 0
                 max_cutpoint = 0
@@ -96,6 +105,7 @@ class DecisionTree():
                         max_cutpoint = cutpoint
                 criteria_values.append(current_max)
                 cutpoints.append([0, max_cutpoint])
+            # For nominal features, split natrually
             elif self.feature_types[i] == 'nominal':
                 cutpoint = [0]
                 for j in range(1, len(data)):
@@ -106,6 +116,7 @@ class DecisionTree():
                 cutpoints.append(cutpoint)
         
         max_ind = argmax(criteria_values)
+        # Return the splitting points if any
         if criteria_values[max_ind] > 0:
             return max_ind, cutpoints[max_ind]
         else:
@@ -118,6 +129,7 @@ class DecisionTree():
     def get_uid(cls):
         return uuid.uuid4().hex
                 
+    # Calculate the information gain of the given split
     @classmethod
     def information_gain(cls, data, cutpoints):
         def entropy(d):
@@ -136,6 +148,7 @@ class DecisionTree():
             gain -= len(slice_)/len(values)*entropy(slice_)
         return gain
     
+    # Calculate the information gain ratio of the given split
     @classmethod
     def gain_ratio(cls, data, cutpoints):
         intrinsic_value = 0
@@ -147,6 +160,7 @@ class DecisionTree():
         ratio = (cls.information_gain(data, cutpoints)/intrinsic_value if intrinsic_value != 0 else 0)
         return ratio
     
+    # Calculate gini index of the given split, return 1 - gini_index for convevience
     @classmethod
     def gini_index(cls, data, cutpoints):
         def gini(d):
