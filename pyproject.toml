@@ -1,0 +1,10 @@
+[project]
+name = "ml-from-scratch"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "libsvm-official>=3.36.0",
+    "scikit-learn>=1.7.1",
+]
