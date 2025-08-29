@@ -7,4 +7,5 @@ requires-python = ">=3.11"
 dependencies = [
     "libsvm-official>=3.36.0",
     "scikit-learn>=1.7.1",
+    "torch>=2.8.0",
 ]
